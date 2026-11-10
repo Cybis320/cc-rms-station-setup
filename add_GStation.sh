@@ -31,6 +31,15 @@ if [[ -f "$file" ]]; then
     fi
 fi
 
+# This checkout (term_launch.sh and the default stations.csv live here)
+HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# Boot stagger for the StartCap autostart entries: the n-th station in the CSV
+# (0-based) opens BOOT_DELAY_BASE + n * BOOT_DELAY_STEP seconds after login.
+# term_launch.sh applies it only shortly after boot, so Desktop clicks are instant.
+BOOT_DELAY_BASE=${BOOT_DELAY_BASE:-30}
+BOOT_DELAY_STEP=${BOOT_DELAY_STEP:-10}
+
 # Get user's desktop directory
 Desktop=$(xdg-user-dir DESKTOP 2>/dev/null || echo "$HOME/Desktop")
 
@@ -77,16 +86,21 @@ case "$TERM_APP" in
 esac
 
 # Write the StartCapture (autostart + desktop link) and LiveStream shortcuts for
-# station $1. Safe to re-run: it overwrites them, so re-running this script
-# repairs shortcuts for existing stations (e.g. after a terminal change).
+# station $1, with boot delay $2 seconds. Safe to re-run: it overwrites them, so
+# re-running this script repairs shortcuts for existing stations (e.g. after a
+# terminal change). StartCap goes through term_launch.sh: at login all entries
+# fire at once and the terminal's D-Bus activation times out without it.
 write_shortcuts() {
-    local item=$1
+    local item=$1 delay=$2 start_exec
+
+    start_exec=$(term_exec "${item}" "~/source/RMS/Scripts/MultiCamLinux/StartCapture.sh ${item}")
+    start_exec="${HERE}/term_launch.sh -d ${delay} -t ${TERM_APP} ${start_exec#"${TERM_APP} "}"
 
     cat <<- EOF > ~/.config/autostart/${item}_StartCap.desktop
 	[Desktop Entry]
 	Name=${item}_StartCap
 	Type=Application
-	Exec=$(term_exec "${item}" "~/source/RMS/Scripts/MultiCamLinux/StartCapture.sh ${item}")
+	Exec=${start_exec}
 	Hidden=false
 	NoDisplay=false
 	Icon=${TERM_ICON}
@@ -118,20 +132,24 @@ write_shortcuts() {
 RMS_data=~/RMS_data
 CSV_FILE=""
 
+# Default CSV: this checkout's stations.csv, else the older CC_Utils location
+default_csv() {
+    local f
+    for f in "${HERE}/stations.csv" ~/source/CC_Utils/stations.csv; do
+        [[ -f "$f" ]] && { echo "$f"; return; }
+    done
+}
+
 if [[ "$#" -eq 0 ]]; then
     # No args: use defaults
-    if [[ -f ~/source/CC_Utils/stations.csv ]]; then
-        CSV_FILE=~/source/CC_Utils/stations.csv
-    fi
+    CSV_FILE=$(default_csv)
 elif [[ "$#" -eq 1 ]]; then
     # Single arg: check if it's a CSV file or a directory
     if [[ "${1}" == *.csv ]]; then
         CSV_FILE="${1}"
     else
         RMS_data="${1}"
-        if [[ -f ~/source/CC_Utils/stations.csv ]]; then
-            CSV_FILE=~/source/CC_Utils/stations.csv
-        fi
+        CSV_FILE=$(default_csv)
     fi
 else
     # Two args: first is RMS_data, second is CSV
@@ -143,7 +161,7 @@ if [[ -z "${CSV_FILE}" || ! -f "${CSV_FILE}" ]]; then
     echo "Error: CSV file not found."
     echo "Usage: $0 [RMS_data_path] <stations.csv>"
     echo "       $0 stations.csv"
-    echo "       $0                  (uses ~/source/CC_Utils/stations.csv)"
+    echo "       $0                  (uses ${HERE}/stations.csv)"
     exit 1
 fi
 
@@ -185,8 +203,13 @@ fi
 No_Stations=$(tail -n +2 <<< "${csv_text}" | grep -c -v '^[[:space:]]*$')
 
 echo -e "\nStations to add from CSV: ${No_Stations}"
+if [[ $No_Stations -eq 0 ]]; then
+    echo "No stations listed in ${CSV_FILE}; add one station_id per line and re-run."
+    exit 0
+fi
 
-# Process each data row
+# Process each data row (n = position, for the boot stagger)
+n=0
 tail -n +2 <<< "${csv_text}" | while IFS=',' read -r -a VALUES; do
     # Skip empty lines
     [[ ${#VALUES[@]} -eq 0 ]] && continue
@@ -198,10 +221,12 @@ tail -n +2 <<< "${csv_text}" | while IFS=',' read -r -a VALUES; do
 
     item="${VALUES[$station_id_col]}"
     [[ -z "$item" ]] && continue
+    delay=$(( BOOT_DELAY_BASE + BOOT_DELAY_STEP * n ))
+    n=$(( n + 1 ))
 
     if [[ -d ~/source/Stations/${item} ]]; then
         echo -e "\nNot creating station ${item} - it already exists (refreshing its shortcuts)"
-        write_shortcuts "${item}"
+        write_shortcuts "${item}" "${delay}"
         continue
     fi
 
@@ -213,7 +238,7 @@ tail -n +2 <<< "${csv_text}" | while IFS=',' read -r -a VALUES; do
     cp ~/source/RMS/.config ~/source/Stations/${item}
 
     # Create the autostart entry and desktop shortcuts
-    write_shortcuts "${item}"
+    write_shortcuts "${item}" "${delay}"
 
     # Copy mask file
     cp ~/source/RMS/mask.bmp ~/source/Stations/${item} 2>/dev/null
