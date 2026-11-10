@@ -1,6 +1,8 @@
 #!/bin/bash
-# Refactored add_GStation.sh - uses gnome-terminal (or Ptyxis on Ubuntu 25.10+) instead of lxterminal
-# Based on RMS/Scripts/MultiCamLinux/add_GStation.sh
+# add_stations.sh - add RMS stations listed in a CSV on a multi-camera GNOME machine.
+# Derived from RMS Scripts/MultiCamLinux/add_GStation.sh (renamed: different
+# arguments and behaviour, and the RMS copy still exists under the old name).
+# Uses gnome-terminal or Ptyxis (Ubuntu 25.10+) instead of lxterminal.
 #
 # This software is part of the Linux port of RMS
 # Copyright (C) 2023  Ed Harman
@@ -17,15 +19,13 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
-#
-# Refactored version - uses gnome-terminal with profiles instead of lxterminal
 
 # Prevent running this script on a Raspberry Pi
 file=/sys/firmware/devicetree/base/model
 if [[ -f "$file" ]]; then
     contents=$(tr -d '\0' < $file)
     if [[ $contents == 'Raspberry'* ]]; then
-        echo "The add_GStation.sh script should not be used on Raspberry Pi."
+        echo "The add_stations.sh script should not be used on Raspberry Pi."
         echo "Please use add_Pi_Station.sh to add cameras on a Pi5."
         exit 1
     fi

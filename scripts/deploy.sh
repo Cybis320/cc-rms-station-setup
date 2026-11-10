@@ -5,7 +5,7 @@
 #   - converts existing StartCap autostart entries to term_launch.sh
 #   - registers the checkout with the shared hourly cc-utils updater
 # Adding stations is a separate, explicit step: fill stations.csv, then run
-# add_GStation.sh.
+# add_stations.sh.
 #
 set -euo pipefail
 
@@ -30,4 +30,4 @@ cc_mark_applied "$DEST"
 echo
 cc_info "Done. To add stations on this machine:"
 cc_info "    nano $DEST/stations.csv"
-cc_info "    $DEST/add_GStation.sh [RMS_data_dir]"
+cc_info "    $DEST/add_stations.sh [RMS_data_dir] [stations.csv]"

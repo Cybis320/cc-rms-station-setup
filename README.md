@@ -27,7 +27,7 @@ It does not add stations by itself.
 
    Empty cells are skipped. The file is local to the machine and ignored by
    git, so updates never touch it.
-2. Run `~/source/CC_Utils/station_setup/add_GStation.sh [RMS_data_dir] [stations.csv]`
+2. Run `~/source/CC_Utils/station_setup/add_stations.sh [RMS_data_dir] [stations.csv]`
    (defaults `~/RMS_data` and the checkout's `stations.csv`, then
    `~/source/CC_Utils/stations.csv`).
 
@@ -68,9 +68,9 @@ unchanged.
 
 ## Not for Raspberry Pi
 
-`add_GStation.sh` refuses to run on a Pi; use RMS's `add_Pi_Station.sh`.
+`add_stations.sh` refuses to run on a Pi; use RMS's `add_Pi_Station.sh`.
 
 ## Licence
 
-GPL-3.0. `add_GStation.sh` is based on RMS `Scripts/MultiCamLinux/add_GStation.sh`
+GPL-3.0. `add_stations.sh` is based on RMS `Scripts/MultiCamLinux/add_GStation.sh`
 (Copyright (C) 2023 Ed Harman).
